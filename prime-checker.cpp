@@ -85,7 +85,7 @@ size_t runWithStaticLoadBalancing(size_t n) {
 
     // helper function to determine where the bounds are for each chunk (formula that distributes the load)
     // this function gradually decreases the gap between the last chunkBound and the next, so higher index chunks are smaller since they have more work related to them
-    auto chunkBound = [&](int num){ return pow(num/8, 0.5) * n; }; 
+    function<size_t(int)> chunkBound = [&](int num){ return pow((double)num/8, 0.5) * n; }; 
 
     //make 8 threads with static chunk sizes
     thread jobs[8] = {
