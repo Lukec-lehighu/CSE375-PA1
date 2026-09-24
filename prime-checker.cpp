@@ -28,7 +28,10 @@ int main() {
 }
 
 void test(string name, function<size_t(size_t)> func, size_t upper_bound) {
-    cout << "Testing " << name << "... \t\t" << flush;
+    cout << "Testing " << name << "... ";
+    for(int i=0; i<40-name.size(); i++)
+        cout << " ";
+    cout << flush;
 
     chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
     size_t count = func(upper_bound);
