@@ -19,15 +19,14 @@ size_t runWithStaticLoadBalancing(size_t n);
 size_t runWithDynamicLoadBalancing(size_t n);
 
 int main() {
-    // test("Normal", runNormal, N);
-    // test("TBB", runWithTBB, N);
+    test("Normal", runNormal, N);
+    test("TBB", runWithTBB, N);
     test("Static Load Balancing", runWithStaticLoadBalancing, N);
-    //test("Dynamic Load Balancing", runWithDynamicLoadBalancing, N);
+    test("Dynamic Load Balancing", runWithDynamicLoadBalancing, N);
 
     return 0;
 }
 
-// TODO: time this function
 void test(string name, function<size_t(size_t)> func, size_t upper_bound) {
     cout << "Testing " << name << "... \t\t" << flush;
 
@@ -106,6 +105,27 @@ size_t runWithStaticLoadBalancing(size_t n) {
 }
 
 size_t runWithDynamicLoadBalancing(size_t n) {
-    //atomic shared value to coordinate 
-    return 0;
+    //atomic shared value to coordinate workers
+    atomic<size_t> numToCheck(1);
+    atomic<size_t> count(0);
+
+    auto workerFunc = [&] {
+        while(true) {
+            size_t check = numToCheck.fetch_add(1);
+            if(check > n) return;
+            if(isPrime(check)) count++;
+        }
+    };
+
+    thread jobs[8];
+    for(int i=0; i<8; i++) {
+        jobs[i] = thread([&]{ workerFunc(); });
+    };
+
+    // wait for all jobs to finish
+    for(int i=0; i<8; i++) {
+        jobs[i].join();
+    }
+
+    return count;
 }
