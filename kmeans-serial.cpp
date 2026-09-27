@@ -308,7 +308,12 @@ vector<double> splitAndConvert(string& in, int expected, char delim) {
 	vector<double> res;
 	while(in.size() > 0) {
 		string tmp = in.substr(0, in.find(delim));
-		res.push_back(stoi(tmp));
+
+		try {
+			res.push_back(stod(tmp));
+		} catch(...) {
+			return res;
+		}
 
 		int next = in.find(delim);
 		if(next == string::npos) break;
@@ -323,10 +328,13 @@ int main(int argc, char *argv[])
 {
 	srand (time(NULL));
 
+	char delim = ' ';
 	if(argc < 2) {
 		cout << "Usage: ./kmeans <filename>" << endl;
 		return 0;
 	}
+	if(argc >= 3)
+		delim = argv[2][0];
 
 	ifstream dataFile(argv[1]);
 
@@ -361,11 +369,12 @@ int main(int argc, char *argv[])
 			break;
 		}
 
-		vector<double> fileValues = splitAndConvert(line, total_values, ',');
+		vector<double> fileValues = splitAndConvert(line, total_values, delim);
+		if(fileValues.size() != total_values) continue;
 
 		for(int j = 0; j < total_values; j++)
 		{
-			values.push_back(fileValues[i]);
+			values.push_back(fileValues[j]);
 		}
 
 		if(has_name)
