@@ -13,6 +13,8 @@ find_package(Threads REQUIRED)
 
 # Define executable with your single source file
 add_executable(prime-checker prime-checker.cpp)
+add_executable(kmeans-serial kmeans-serial.cpp)
 
 # Link the TBB target (handles include directories, flags, and library linking)
 target_link_libraries(prime-checker PRIVATE TBB::tbb PRIVATE Threads::Threads)
+target_link_libraries(kmeans-serial PRIVATE TBB::tbb PRIVATE Threads::Threads)

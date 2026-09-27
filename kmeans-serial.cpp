@@ -2,6 +2,7 @@
 // reference: https://github.com/marcoscastro/kmeans
 
 #include <iostream>
+#include <fstream>
 #include <vector>
 #include <math.h>
 #include <stdlib.h>
@@ -199,6 +200,7 @@ public:
 		// choose K distinct values for the centers of the clusters
 		for(int i = 0; i < K; i++)
 		{
+			// randomly select a point that isn't already selected
 			while(true)
 			{
 				int index_point = rand() % total_points;
@@ -230,6 +232,7 @@ public:
 
 				if(id_old_cluster != id_nearest_center)
 				{
+					// remove from old cluster, add to new one
 					if(id_old_cluster != -1)
 						clusters[id_old_cluster].removePoint(points[i].getID());
 
@@ -301,13 +304,44 @@ public:
 	}
 };
 
+vector<double> splitAndConvert(string& in) {
+	vector<double> res;
+	while(in.size() > 0) {
+		string tmp = in.substr(0, in.find(' '));
+		res.push_back(stoi(tmp));
+
+		int next = in.find(' ');
+		if(next == string::npos) break;
+		in = in.substr(next+1);
+	}
+	return res;
+}
+
 int main(int argc, char *argv[])
 {
 	srand (time(NULL));
 
-	int total_points, total_values, K, max_iterations, has_name;
+	if(argc < 2) {
+		cout << "Usage: ./kmeans <filename>" << endl;
+		return 0;
+	}
 
-	cin >> total_points >> total_values >> K >> max_iterations >> has_name;
+	ifstream dataFile(argv[1]);
+
+	int total_points, total_values, K, max_iterations, has_name;
+	string line;
+	if(getline(dataFile, line)) {
+		auto nums = splitAndConvert(line);
+		total_points = nums[0];
+		total_values = nums[1];
+		K = nums[2];
+		max_iterations = nums[3];
+		has_name = nums[4];
+	} else {
+		cout << "Input file missing line" << endl;
+		dataFile.close();
+		return 0;
+	}
 
 	vector<Point> points;
 	string point_name;
@@ -315,18 +349,21 @@ int main(int argc, char *argv[])
 	for(int i = 0; i < total_points; i++)
 	{
 		vector<double> values;
+		if(!getline(dataFile, line)) {
+			cout << "Improper number of lines" << endl;
+			break;
+		}
+
+		auto fileValues = splitAndConvert(line);
 
 		for(int j = 0; j < total_values; j++)
 		{
-			double value;
-			cin >> value;
-			values.push_back(value);
+			values.push_back(fileValues[i]);
 		}
 
 		if(has_name)
 		{
-			cin >> point_name;
-			Point p(i, values, point_name);
+			Point p(i, values, line);
 			points.push_back(p);
 		}
 		else
@@ -335,6 +372,8 @@ int main(int argc, char *argv[])
 			points.push_back(p);
 		}
 	}
+
+	dataFile.close();
 
 	KMeans kmeans(K, total_points, total_values, max_iterations);
 	kmeans.run(points);
