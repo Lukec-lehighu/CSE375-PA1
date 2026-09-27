@@ -304,15 +304,17 @@ public:
 	}
 };
 
-vector<double> splitAndConvert(string& in) {
+vector<double> splitAndConvert(string& in, int expected, char delim) {
 	vector<double> res;
 	while(in.size() > 0) {
-		string tmp = in.substr(0, in.find(' '));
+		string tmp = in.substr(0, in.find(delim));
 		res.push_back(stoi(tmp));
 
-		int next = in.find(' ');
+		int next = in.find(delim);
 		if(next == string::npos) break;
 		in = in.substr(next+1);
+
+		if(res.size() >= expected) break;
 	}
 	return res;
 }
@@ -331,7 +333,12 @@ int main(int argc, char *argv[])
 	int total_points, total_values, K, max_iterations, has_name;
 	string line;
 	if(getline(dataFile, line)) {
-		auto nums = splitAndConvert(line);
+		auto nums = splitAndConvert(line, 5, ' ');
+		if(nums.size() != 5) {
+			cout << "Improperly formatted header line!" << endl;
+			return 0;
+		}
+
 		total_points = nums[0];
 		total_values = nums[1];
 		K = nums[2];
@@ -354,7 +361,7 @@ int main(int argc, char *argv[])
 			break;
 		}
 
-		auto fileValues = splitAndConvert(line);
+		vector<double> fileValues = splitAndConvert(line, total_values, ',');
 
 		for(int j = 0; j < total_values; j++)
 		{
@@ -375,7 +382,7 @@ int main(int argc, char *argv[])
 
 	dataFile.close();
 
-	KMeans kmeans(K, total_points, total_values, max_iterations);
+	KMeans kmeans(K, points.size(), total_values, max_iterations);
 	kmeans.run(points);
 
 	return 0;
