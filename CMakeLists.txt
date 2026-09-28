@@ -4,6 +4,8 @@ project(prime-checker CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+add_compile_options(-O3)
+
 # Find oneTBB / Intel TBB package
 find_package(TBB REQUIRED)
 

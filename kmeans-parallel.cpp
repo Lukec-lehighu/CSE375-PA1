@@ -255,8 +255,17 @@ public:
 
 					if(total_points_cluster > 0)
 					{
-						for(int p = 0; p < total_points_cluster; p++)
-							sum += clusters[i].getPoint(p).getValue(j);
+						sum = parallel_reduce(
+							blocked_range<int>(0, total_points_cluster),
+							double(0),
+							[&](tbb::blocked_range<int>& r, double in) {
+								for(int p = r.begin(); p < r.end(); p++)
+									in += clusters[i].getPoint(p).getValue(j);
+								return in;
+							},
+							std::plus<double>()
+						);
+						
 						clusters[i].setCentralValue(j, sum / total_points_cluster);
 					}
 				}
@@ -391,7 +400,6 @@ int main(int argc, char *argv[])
 			points.push_back(p);
 		}
 	}
-
 	dataFile.close();
 
 	KMeans kmeans(K, points.size(), total_values, max_iterations);
