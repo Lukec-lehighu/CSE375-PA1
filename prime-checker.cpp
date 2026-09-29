@@ -8,6 +8,7 @@ using namespace std;
 using namespace oneapi::tbb;
 
 #define N 1000000
+#define NUM_THREADS 4
 
 void test(string name, function<size_t(size_t)> func, size_t upper_bound);
 
@@ -19,8 +20,8 @@ size_t runWithStaticLoadBalancing(size_t n);
 size_t runWithDynamicLoadBalancing(size_t n);
 
 int main() {
-    test("Normal", runNormal, N);
-    test("TBB", runWithTBB, N);
+    //test("Normal", runNormal, N);
+    //test("TBB", runWithTBB, N);
     test("Static Load Balancing", runWithStaticLoadBalancing, N);
     test("Dynamic Load Balancing", runWithDynamicLoadBalancing, N);
 
@@ -85,22 +86,16 @@ size_t runWithStaticLoadBalancing(size_t n) {
 
     // helper function to determine where the bounds are for each chunk (formula that distributes the load)
     // this function gradually decreases the gap between the last chunkBound and the next, so higher index chunks are smaller since they have more work related to them
-    function<size_t(int)> chunkBound = [&](int num){ return pow((double)num/8, 0.5) * n; }; 
+    function<size_t(int)> chunkBound = [&](int num){ return pow((double)num/NUM_THREADS, 0.5) * n; }; 
 
     //make 8 threads with static chunk sizes
-    thread jobs[8] = {
-        thread([&]{ chunkFunction(0, chunkBound(1)); }),
-        thread([&]{ chunkFunction(chunkBound(1), chunkBound(2)); }),
-        thread([&]{ chunkFunction(chunkBound(2), chunkBound(3)); }),
-        thread([&]{ chunkFunction(chunkBound(3), chunkBound(4)); }),
-        thread([&]{ chunkFunction(chunkBound(4), chunkBound(5)); }),
-        thread([&]{ chunkFunction(chunkBound(5), chunkBound(6)); }),
-        thread([&]{ chunkFunction(chunkBound(6), chunkBound(7)); }),
-        thread([&]{ chunkFunction(chunkBound(7), n); }),
-    };
+    thread jobs[NUM_THREADS];
+    for(int i=0; i<NUM_THREADS; i++) {
+        jobs[i] = thread([=]{ chunkFunction(chunkBound(i), chunkBound(i+1)); });
+    }
 
     // wait for all jobs to finish
-    for(int i=0; i<8; i++) {
+    for(int i=0; i<NUM_THREADS; i++) {
         jobs[i].join();
     }
 
@@ -120,13 +115,13 @@ size_t runWithDynamicLoadBalancing(size_t n) {
         }
     };
 
-    thread jobs[8];
-    for(int i=0; i<8; i++) {
+    thread jobs[NUM_THREADS];
+    for(int i=0; i<NUM_THREADS; i++) {
         jobs[i] = thread([&]{ workerFunc(); });
     };
 
     // wait for all jobs to finish
-    for(int i=0; i<8; i++) {
+    for(int i=0; i<NUM_THREADS; i++) {
         jobs[i].join();
     }
 
