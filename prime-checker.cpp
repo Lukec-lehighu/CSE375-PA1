@@ -8,7 +8,7 @@ using namespace std;
 using namespace oneapi::tbb;
 
 #define N 1000000
-#define NUM_THREADS 4
+#define NUM_THREADS 16
 
 void test(string name, function<size_t(size_t)> func, size_t upper_bound);
 
@@ -20,8 +20,8 @@ size_t runWithStaticLoadBalancing(size_t n);
 size_t runWithDynamicLoadBalancing(size_t n);
 
 int main() {
-    //test("Normal", runNormal, N);
-    //test("TBB", runWithTBB, N);
+    test("Normal", runNormal, N);
+    test("TBB", runWithTBB, N);
     test("Static Load Balancing", runWithStaticLoadBalancing, N);
     test("Dynamic Load Balancing", runWithDynamicLoadBalancing, N);
 
@@ -64,6 +64,10 @@ size_t runNormal(size_t n) {
 }
 
 size_t runWithTBB(size_t n) {
+    global_control gc(
+        global_control::max_allowed_parallelism, NUM_THREADS
+    );
+
     atomic<size_t> count(0);
     parallel_for(blocked_range<size_t>(1,n), [&](const tbb::blocked_range<size_t>& r) {
         for(size_t i=r.begin(); i<r.end(); ++i) {
@@ -86,7 +90,9 @@ size_t runWithStaticLoadBalancing(size_t n) {
 
     // helper function to determine where the bounds are for each chunk (formula that distributes the load)
     // this function gradually decreases the gap between the last chunkBound and the next, so higher index chunks are smaller since they have more work related to them
-    function<size_t(int)> chunkBound = [&](int num){ return pow((double)num/NUM_THREADS, 0.5) * n; }; 
+    function<size_t(int)> chunkBound = [&](int num){ 
+        return pow((double)num/NUM_THREADS, 0.5) * n; 
+    }; 
 
     //make 8 threads with static chunk sizes
     thread jobs[NUM_THREADS];

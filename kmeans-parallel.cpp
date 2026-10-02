@@ -78,6 +78,8 @@ private:
 	int id_cluster;
 	vector<double> central_values;
 	vector<Point> points;
+	concurrent_vector<Point> pointsToAdd;
+	concurrent_vector<int> pointsToRemove;
 
 public:
 	Cluster(int id_cluster, Point point)
@@ -110,6 +112,27 @@ public:
 			}
 		}
 		return false;
+	}
+
+	void resetSchedule() {
+		pointsToAdd.clear();
+		pointsToRemove.clear();
+	}
+
+	void scheduleAdd(Point point) {
+		pointsToAdd.push_back(point);
+	}
+
+	void scheduleRemove(int id) {
+		pointsToRemove.push_back(id);
+	}
+
+	void executeScheduled() {
+		for(auto& p : pointsToRemove)
+			removePoint(p);
+		for(auto& p : pointsToAdd)
+			addPoint(p);
+		resetSchedule();
 	}
 
 	double getCentralValue(int index)
@@ -227,12 +250,6 @@ public:
 		{
 			bool done = true;
 
-			// parallel for this, put points that need to be adjusted into a concurrent vector (tbb) and perform those operations after
-			// other idea is to put a "dirty" bit in the points themselves and mark them as dirty when they need to be added to a different cluster
-
-			// stores the index of the point and the id of the new cluster
-			concurrent_vector<pair<int, int>> bad_points;
-
 			// associates each point to the nearest center
 			parallel_for(blocked_range<int>(1,total_points,80), [&](const blocked_range<int>& r) {
 				for(int i=r.begin(); i<r.end(); i++) {
@@ -241,21 +258,22 @@ public:
 
 					if(id_old_cluster != id_nearest_center)
 					{
-						bad_points.push_back({i, id_nearest_center});
+						// remove from old cluster, add to new one
+						if(id_old_cluster != -1)
+							clusters[id_old_cluster].scheduleRemove(points[i].getID());
+
+						points[i].setCluster(id_nearest_center);
+						clusters[id_nearest_center].scheduleAdd(points[i]);
 						done = false;
 					}
 				}
 			});
 
-			// after concurrent part: update the clusters with the points that were found to need updating
-			for(auto &p : bad_points) {
-				int id_old_cluster = points[p.first].getCluster();
-				if(id_old_cluster != -1)
-					clusters[id_old_cluster].removePoint(points[p.first].getID());
-
-				points[p.first].setCluster(p.second);
-				clusters[p.second].addPoint(points[p.first]);
-			}
+			parallel_for(blocked_range<int>(0, K), [&](const blocked_range<int>& r) {
+				for(int i=r.begin(); i<r.end(); i++) {
+					clusters[i].executeScheduled();
+				}
+			});
 
 			// recalculating the center of each cluster
 			for(int i = 0; i < K; i++)
